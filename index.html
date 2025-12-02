@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Remote Session Detection</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #111;
+            color: #eee;
+            padding: 20px;
+        }
+        h1 {
+            color: #4CAF50;
+        }
+        #info {
+            margin-top: 30px;
+            background: #1c1c1c;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Remote Session Detection Demo</h1>
+<p>This page shows a real-time score estimating if your browser is being accessed through RDP, AnyDesk, or other remote-control tools.</p>
+
+<div id="info">
+    Open your browser console to see detailed logs.
+</div>
+
+<script>
+(function() {
+    // -------------------------------
+    // Create alert panel
+    // -------------------------------
+    var panel = document.createElement("div");
+    panel.style.position = "fixed";
+    panel.style.top = "10px";
+    panel.style.right = "10px";
+    panel.style.backgroundColor = "rgba(0,0,0,0.85)";
+    panel.style.color = "#fff";
+    panel.style.padding = "12px";
+    panel.style.fontFamily = "Arial, sans-serif";
+    panel.style.fontSize = "14px";
+    panel.style.borderRadius = "6px";
+    panel.style.zIndex = 9999;
+    panel.style.width = "250px";
+    panel.innerHTML = "<b>Remote Session Score</b><br>Initializing...";
+    document.body.appendChild(panel);
+
+    // -------------------------------
+    // Initialize score
+    // -------------------------------
+    var score = 0;
+
+    // -------------------------------
+    // Screen & DPI check
+    // -------------------------------
+    var screenWidth = window.screen.width;
+    var screenHeight = window.screen.height;
+    var devicePixelRatio = window.devicePixelRatio;
+
+    if (screenWidth < 800 || screenHeight < 600) {
+        score += 15;
+        console.log("⚠ Small screen resolution detected");
+    }
+    if (devicePixelRatio !== 1) {
+        score += 10;
+        console.log("⚠ Non-default DPI detected:", devicePixelRatio);
+    }
+
+    // -------------------------------
+    // GPU / WebGL check
+    // -------------------------------
+    try {
+        var canvas = document.createElement("canvas");
+        var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+        if (gl) {
+            var debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+            if (debugInfo) {
+                var renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+                console.log("GPU Renderer:", renderer);
+
+                if (/Microsoft Remote Display|VMware|Virtual|AnyDesk/i.test(renderer)) {
+                    score += 25;
+                    console.log("⚠ Virtual GPU detected:", renderer);
+                }
+            }
+        }
+    } catch(e) {}
+
+    // -------------------------------
+    // Hardware / OS check
+    // -------------------------------
+    var cores = navigator.hardwareConcurrency;
+    var platform = navigator.platform;
+    if (platform.indexOf("Win") !== -1 && cores <= 1) {
+        score += 15;
+        console.log("⚠ Very low CPU core count:", cores);
+    }
+
+    // -------------------------------
+    // Mouse movement check
+    // -------------------------------
+    var lastX = null, lastY = null;
+    var anomalyCount = 0;
+
+    document.addEventListener("mousemove", function(e) {
+        if (lastX !== null && lastY !== null) {
+            var dx = e.screenX - lastX;
+            var dy = e.screenY - lastY;
+            var dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist === 0) anomalyCount++;
+            if (anomalyCount > 50) {
+                score += 20;
+                anomalyCount = 0;
+                console.log("⚠ Mouse automation pattern detected");
+            }
+        }
+        lastX = e.screenX;
+        lastY = e.screenY;
+    });
+
+    // -------------------------------
+    // Animation / rendering timing
+    // -------------------------------
+    var lastFrame = performance.now();
+
+    function checkFrame() {
+        var now = performance.now();
+        var delta = now - lastFrame;
+
+        if (delta > 50) {
+            score += 15;
+            console.log("⚠ High frame lag detected:", delta, "ms");
+        }
+
+        lastFrame = now;
+        updatePanel();
+        requestAnimationFrame(checkFrame);
+    }
+
+    // -------------------------------
+    // Update alert panel
+    // -------------------------------
+    function updatePanel() {
+        var finalScore = Math.min(score, 100);
+        var status = "Low suspicion";
+        if (finalScore > 40 && finalScore <= 70) status = "Medium suspicion";
+        if (finalScore > 70) status = "HIGH suspicion";
+
+        panel.innerHTML = "<b>Remote Session Score</b><br>" +
+                          "Score: " + finalScore + "%<br>" +
+                          "Status: " + status;
+    }
+
+    requestAnimationFrame(checkFrame);
+    console.log("Remote session detection running...");
+})();
+</script>
+
+</body>
+</html>
