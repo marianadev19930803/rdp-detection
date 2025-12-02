@@ -1,41 +1,17 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>Remote Session Detection</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #111;
-            color: #eee;
-            padding: 20px;
-        }
-        h1 {
-            color: #4CAF50;
-        }
-        #info {
-            margin-top: 30px;
-            background: #1c1c1c;
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid #444;
-        }
-    </style>
+    <title>Remote Session Detector</title>
 </head>
-<body>
-
-<h1>Remote Session Detection Demo</h1>
-<p>This page shows a real-time score estimating if your browser is being accessed through RDP, AnyDesk, or other remote-control tools.</p>
-
-<div id="info">
-    Open your browser console to see detailed logs.
-</div>
+<body style="background:#111; color:#fff; font-family:Arial;">
 
 <script>
 (function() {
-    // -------------------------------
-    // Create alert panel
-    // -------------------------------
+
+    /* ==============================
+       UI Panel
+    =============================== */
     var panel = document.createElement("div");
     panel.style.position = "fixed";
     panel.style.top = "10px";
@@ -46,119 +22,134 @@
     panel.style.fontFamily = "Arial, sans-serif";
     panel.style.fontSize = "14px";
     panel.style.borderRadius = "6px";
-    panel.style.zIndex = 9999;
-    panel.style.width = "250px";
-    panel.innerHTML = "<b>Remote Session Score</b><br>Initializing...";
+    panel.style.zIndex = 99999;
+    panel.style.width = "260px";
+    panel.innerHTML = "<b>Remote Session Score</b><br>Loading...";
     document.body.appendChild(panel);
 
-    // -------------------------------
-    // Initialize score
-    // -------------------------------
     var score = 0;
 
-    // -------------------------------
-    // Screen & DPI check
-    // -------------------------------
-    var screenWidth = window.screen.width;
-    var screenHeight = window.screen.height;
-    var devicePixelRatio = window.devicePixelRatio;
 
-    if (screenWidth < 800 || screenHeight < 600) {
-        score += 15;
-        console.log("⚠ Small screen resolution detected");
-    }
-    if (devicePixelRatio !== 1) {
-        score += 10;
-        console.log("⚠ Non-default DPI detected:", devicePixelRatio);
-    }
+    /* ==============================
+       Screen & DPI Checks
+    =============================== */
+    var sw = window.screen.width;
+    var sh = window.screen.height;
+    var dpr = window.devicePixelRatio;
 
-    // -------------------------------
-    // GPU / WebGL check
-    // -------------------------------
+    if (sw < 800 || sh < 600) score += 10;
+    if (dpr !== 1) score += 10;
+
+
+    /* ==============================
+       GPU Fingerprint Check
+    =============================== */
     try {
         var canvas = document.createElement("canvas");
         var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
         if (gl) {
-            var debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
-            if (debugInfo) {
-                var renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
-                console.log("GPU Renderer:", renderer);
-
-                if (/Microsoft Remote Display|VMware|Virtual|AnyDesk/i.test(renderer)) {
-                    score += 25;
-                    console.log("⚠ Virtual GPU detected:", renderer);
+            var debug = gl.getExtension("WEBGL_debug_renderer_info");
+            if (debug) {
+                var renderer = gl.getParameter(debug.UNMASKED_RENDERER_WEBGL);
+                if (/Microsoft Remote Display|VMware|Virtual|AnyDesk|RDP/i.test(renderer)) {
+                    score += 35;
                 }
             }
         }
-    } catch(e) {}
+    } catch (e) {}
 
-    // -------------------------------
-    // Hardware / OS check
-    // -------------------------------
-    var cores = navigator.hardwareConcurrency;
-    var platform = navigator.platform;
-    if (platform.indexOf("Win") !== -1 && cores <= 1) {
-        score += 15;
-        console.log("⚠ Very low CPU core count:", cores);
-    }
 
-    // -------------------------------
-    // Mouse movement check
-    // -------------------------------
-    var lastX = null, lastY = null;
-    var anomalyCount = 0;
+    /* ==============================
+       Mouse Movement Anomalies
+    =============================== */
+    var lastX = null;
+    var lastY = null;
+    var anomaly = 0;
 
     document.addEventListener("mousemove", function(e) {
         if (lastX !== null && lastY !== null) {
             var dx = e.screenX - lastX;
             var dy = e.screenY - lastY;
             var dist = Math.sqrt(dx*dx + dy*dy);
-            if (dist === 0) anomalyCount++;
-            if (anomalyCount > 50) {
-                score += 20;
-                anomalyCount = 0;
-                console.log("⚠ Mouse automation pattern detected");
+
+            // RDP/AnyDesk sometimes sends same position repeatedly
+            if (dist === 0) anomaly++;
+
+            if (anomaly > 30) {
+                score += 15;
+                anomaly = 0;
             }
         }
         lastX = e.screenX;
         lastY = e.screenY;
     });
 
-    // -------------------------------
-    // Animation / rendering timing
-    // -------------------------------
-    var lastFrame = performance.now();
 
-    function checkFrame() {
-        var now = performance.now();
-        var delta = now - lastFrame;
+    /* ==============================
+       Average of Last 10 Frame Times
+    =============================== */
+    var lastFrameTime = performance.now();
+    var frameHistory = [];
+    var maxFrames = 10;
 
-        if (delta > 50) {
-            score += 15;
-            console.log("⚠ High frame lag detected:", delta, "ms");
+    function addFrameTime(dt) {
+        frameHistory.push(dt);
+        if (frameHistory.length > maxFrames) {
+            frameHistory.shift();
         }
-
-        lastFrame = now;
-        updatePanel();
-        requestAnimationFrame(checkFrame);
     }
 
-    // -------------------------------
-    // Update alert panel
-    // -------------------------------
-    function updatePanel() {
-        var finalScore = Math.min(score, 100);
-        var status = "Low suspicion";
-        if (finalScore > 40 && finalScore <= 70) status = "Medium suspicion";
-        if (finalScore > 70) status = "HIGH suspicion";
-
-        panel.innerHTML = "<b>Remote Session Score</b><br>" +
-                          "Score: " + finalScore + "%<br>" +
-                          "Status: " + status;
+    function avgFrameTime() {
+        var sum = 0;
+        for (var i = 0; i < frameHistory.length; i++) {
+            sum += frameHistory[i];
+        }
+        if (frameHistory.length === 0) return 0;
+        return sum / frameHistory.length;
     }
 
-    requestAnimationFrame(checkFrame);
-    console.log("Remote session detection running...");
+
+    /* ==============================
+       Main Loop
+    =============================== */
+    function tick() {
+        var now = performance.now();
+        var delta = now - lastFrameTime;
+        lastFrameTime = now;
+
+        addFrameTime(delta);
+
+        // High frame delay → remote desktop or poor GPU virtualization
+        var avg = avgFrameTime();
+        if (avg > 40) score += 10;
+        if (avg > 80) score += 20;
+
+        updatePanel(avg);
+        requestAnimationFrame(tick);
+    }
+
+
+    /* ==============================
+       Update UI
+    =============================== */
+    function updatePanel(avg) {
+        var final = Math.min(score, 100);
+        
+        var state = "Low suspicion";
+        if (final >= 40 && final < 70) state = "Medium suspicion";
+        if (final >= 70) state = "HIGH suspicion";
+
+        panel.innerHTML =
+            "<b>Remote Session Score</b><br>" +
+            "Score: <b>" + final + "%</b><br>" +
+            "Status: <b>" + state + "</b><br><br>" +
+            "Avg last 10 frame time: <b>" + avg.toFixed(2) + " ms</b><br>" +
+            "Screen: " + sw + "×" + sh + "<br>" +
+            "DPR: " + dpr;
+    }
+
+    requestAnimationFrame(tick);
+
 })();
 </script>
 
