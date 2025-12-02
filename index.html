@@ -2,16 +2,14 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Remote Session Detector</title>
+    <title>Remote Session Detection</title>
 </head>
 <body style="background:#111; color:#fff; font-family:Arial;">
 
 <script>
 (function() {
 
-    /* ==============================
-       UI Panel
-    =============================== */
+    // ===== UI Panel =====
     var panel = document.createElement("div");
     panel.style.position = "fixed";
     panel.style.top = "10px";
@@ -23,27 +21,21 @@
     panel.style.fontSize = "14px";
     panel.style.borderRadius = "6px";
     panel.style.zIndex = 99999;
-    panel.style.width = "260px";
+    panel.style.width = "270px";
     panel.innerHTML = "<b>Remote Session Score</b><br>Loading...";
     document.body.appendChild(panel);
 
-    var score = 0;
-
-
-    /* ==============================
-       Screen & DPI Checks
-    =============================== */
+    // ===== Screen & DPI =====
     var sw = window.screen.width;
     var sh = window.screen.height;
     var dpr = window.devicePixelRatio;
 
-    if (sw < 800 || sh < 600) score += 10;
-    if (dpr !== 1) score += 10;
+    var screenScore = 0;
+    if (sw < 800 || sh < 600) screenScore += 15;
+    if (dpr !== 1) screenScore += 10;
 
-
-    /* ==============================
-       GPU Fingerprint Check
-    =============================== */
+    // ===== GPU Check =====
+    var gpuScore = 0;
     try {
         var canvas = document.createElement("canvas");
         var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
@@ -52,100 +44,83 @@
             if (debug) {
                 var renderer = gl.getParameter(debug.UNMASKED_RENDERER_WEBGL);
                 if (/Microsoft Remote Display|VMware|Virtual|AnyDesk|RDP/i.test(renderer)) {
-                    score += 35;
+                    gpuScore = 25;
                 }
             }
         }
     } catch (e) {}
 
+    // ===== Mouse anomalies =====
+    var lastX = null, lastY = null;
+    var anomalyCount = 0;
+    var mouseScore = 0;
 
-    /* ==============================
-       Mouse Movement Anomalies
-    =============================== */
-    var lastX = null;
-    var lastY = null;
-    var anomaly = 0;
-
-    document.addEventListener("mousemove", function(e) {
-        if (lastX !== null && lastY !== null) {
+    document.addEventListener("mousemove", function(e){
+        if(lastX !== null && lastY !== null){
             var dx = e.screenX - lastX;
             var dy = e.screenY - lastY;
             var dist = Math.sqrt(dx*dx + dy*dy);
-
-            // RDP/AnyDesk sometimes sends same position repeatedly
-            if (dist === 0) anomaly++;
-
-            if (anomaly > 30) {
-                score += 15;
-                anomaly = 0;
+            if(dist===0) anomalyCount++;
+            if(anomalyCount > 30){ 
+                mouseScore = 15;
+                anomalyCount = 0;
             }
         }
         lastX = e.screenX;
         lastY = e.screenY;
     });
 
-
-    /* ==============================
-       Average of Last 10 Frame Times
-    =============================== */
-    var lastFrameTime = performance.now();
-    var frameHistory = [];
+    // ===== Frame time tracking =====
+    var lastFrame = performance.now();
+    var frameTimes = [];
     var maxFrames = 10;
 
-    function addFrameTime(dt) {
-        frameHistory.push(dt);
-        if (frameHistory.length > maxFrames) {
-            frameHistory.shift();
-        }
+    function addFrame(dt){
+        frameTimes.push(dt);
+        if(frameTimes.length > maxFrames) frameTimes.shift();
     }
 
-    function avgFrameTime() {
+    function avgFrame(){
         var sum = 0;
-        for (var i = 0; i < frameHistory.length; i++) {
-            sum += frameHistory[i];
-        }
-        if (frameHistory.length === 0) return 0;
-        return sum / frameHistory.length;
+        for(var i=0;i<frameTimes.length;i++) sum += frameTimes[i];
+        return frameTimes.length ? sum / frameTimes.length : 0;
     }
 
-
-    /* ==============================
-       Main Loop
-    =============================== */
-    function tick() {
+    // ===== Main loop =====
+    function tick(){
         var now = performance.now();
-        var delta = now - lastFrameTime;
-        lastFrameTime = now;
+        var dt = now - lastFrame;
+        lastFrame = now;
 
-        addFrameTime(delta);
+        addFrame(dt);
 
-        // High frame delay → remote desktop or poor GPU virtualization
-        var avg = avgFrameTime();
-        if (avg > 40) score += 10;
-        if (avg > 80) score += 20;
+        var avg = avgFrame();
 
-        updatePanel(avg);
-        requestAnimationFrame(tick);
-    }
+        // ===== Calculate final score =====
+        // Base: Screen + GPU + Mouse anomalies
+        var baseScore = screenScore + gpuScore + mouseScore;
 
+        // Frame score proportional to avg frame time
+        // 16ms = 60fps → 0, 100ms → ~40 points, capped at 40
+        var frameScore = Math.min(Math.max((avg - 16)/2,0),40);
 
-    /* ==============================
-       Update UI
-    =============================== */
-    function updatePanel(avg) {
-        var final = Math.min(score, 100);
-        
-        var state = "Low suspicion";
-        if (final >= 40 && final < 70) state = "Medium suspicion";
-        if (final >= 70) state = "HIGH suspicion";
+        var finalScore = Math.min(baseScore + frameScore,100);
 
+        // Determine status
+        var status = "Low suspicion";
+        if(finalScore >= 40 && finalScore < 70) status = "Medium suspicion";
+        if(finalScore >= 70) status = "HIGH suspicion";
+
+        // Update panel
         panel.innerHTML =
             "<b>Remote Session Score</b><br>" +
-            "Score: <b>" + final + "%</b><br>" +
-            "Status: <b>" + state + "</b><br><br>" +
-            "Avg last 10 frame time: <b>" + avg.toFixed(2) + " ms</b><br>" +
+            "Score: <b>" + finalScore.toFixed(0) + "%</b><br>" +
+            "Status: <b>" + status + "</b><br><br>" +
+            "Avg last 10 frames: <b>" + avg.toFixed(2) + " ms</b><br>" +
             "Screen: " + sw + "×" + sh + "<br>" +
             "DPR: " + dpr;
+
+        requestAnimationFrame(tick);
     }
 
     requestAnimationFrame(tick);
