@@ -1,139 +1,191 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Remote Session Detection</title>
-    
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Simple Webpage</title>
+    <script type="text/javascript">
+      atOptions = {
+        'key' : '7597aa772c2c514edb50598d1254e478',
+        'format' : 'iframe',
+        'height' : 90,
+        'width' : 728,
+        'params' : {}
+      };
+    </script>
+    <script
+      type="text/javascript"
+      src="//www.highperformanceformat.com/7597aa772c2c514edb50598d1254e478/invoke.js"
+    ></script>
+    <script type="text/javascript">
+      atOptions = {
+      	'key' : '7597aa772c2c514edb50598d1254e478',
+      	'format' : 'iframe',
+      	'height' : 90,
+      	'width' : 728,
+      	'params' : {}
+      };
+    </script>
+    <script
+      type="text/javascript"
+      src="//www.highperformanceformat.com/7597aa772c2c514edb50598d1254e478/invoke.js"
+    ></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f7fa;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: linear-gradient(135deg, #4b6cb7, #182848);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        
+        h2 {
+            color: #2c3e50;
+            border-bottom: 2px solid #4b6cb7;
+            padding-bottom: 8px;
+            margin: 25px 0 15px 0;
+        }
+        
+        p {
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+        }
+        
+        .content {
+            background-color: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        }
+        
+        ul, ol {
+            margin-left: 20px;
+            margin-bottom: 20px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        .highlight {
+            background-color: #e8f4fc;
+            padding: 15px;
+            border-left: 4px solid #4b6cb7;
+            border-radius: 0 5px 5px 0;
+            margin: 20px 0;
+        }
+        
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            padding: 20px;
+            color: #666;
+            border-top: 1px solid #ddd;
+        }
+        
+        a {
+            color: #4b6cb7;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        code {
+            background-color: #f1f1f1;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.95rem;
+        }
+        
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 15px;
+            }
+        }
+    </style>
 </head>
-<body style="background:#111; color:#fff; font-family:Arial;">
-<script async src="https://js.onclckmn.com/static/onclicka.js" data-admpid="398699"></script>
-<script>
+<body>
+    <header>
+        <h1>Welcome to My Simple Webpage</h1>
+        <p>A basic HTML file with clean design</p>
+    </header>
     
-(function() {
-
-    // ===== UI Panel =====
-    var panel = document.createElement("div");
-    panel.style.position = "fixed";
-    panel.style.top = "10px";
-    panel.style.right = "10px";
-    panel.style.backgroundColor = "rgba(0,0,0,0.85)";
-    panel.style.color = "#fff";
-    panel.style.padding = "12px";
-    panel.style.fontFamily = "Arial, sans-serif";
-    panel.style.fontSize = "14px";
-    panel.style.borderRadius = "6px";
-    panel.style.zIndex = 99999;
-    panel.style.width = "270px";
-    panel.innerHTML = "<b>Remote Session Score</b><br>Loading...";
-    document.body.appendChild(panel);
-
-    // ===== Screen & DPI =====
-    var sw = window.screen.width;
-    var sh = window.screen.height;
-    var dpr = window.devicePixelRatio;
-
-    var screenScore = 0;
-    if (sw < 800 || sh < 600) screenScore += 15;
-    if (dpr !== 1) screenScore += 10;
-
-    // ===== GPU Check =====
-    var gpuScore = 0;
-    try {
-        var canvas = document.createElement("canvas");
-        var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-        if (gl) {
-            var debug = gl.getExtension("WEBGL_debug_renderer_info");
-            if (debug) {
-                var renderer = gl.getParameter(debug.UNMASKED_RENDERER_WEBGL);
-                if (/Microsoft Remote Display|VMware|Virtual|AnyDesk|RDP/i.test(renderer)) {
-                    gpuScore = 25;
-                }
-            }
-        }
-    } catch (e) {}
-
-    // ===== Mouse anomalies =====
-    var lastX = null, lastY = null;
-    var anomalyCount = 0;
-    var mouseScore = 0;
-
-    document.addEventListener("mousemove", function(e){
-        if(lastX !== null && lastY !== null){
-            var dx = e.screenX - lastX;
-            var dy = e.screenY - lastY;
-            var dist = Math.sqrt(dx*dx + dy*dy);
-            if(dist===0) anomalyCount++;
-            if(anomalyCount > 30){ 
-                mouseScore = 15;
-                anomalyCount = 0;
-            }
-        }
-        lastX = e.screenX;
-        lastY = e.screenY;
-    });
-
-    // ===== Frame time tracking =====
-    var lastFrame = performance.now();
-    var frameTimes = [];
-    var maxFrames = 3;
-
-    function addFrame(dt){
-        frameTimes.push(dt);
-        if(frameTimes.length > maxFrames) frameTimes.shift();
-    }
-
-    function avgFrame(){
-        var sum = 0;
-        for(var i=0;i<frameTimes.length;i++) sum += frameTimes[i];
-        return frameTimes.length ? sum / frameTimes.length : 0;
-    }
-
-    // ===== Main loop =====
-    function tick(){
-        var now = performance.now();
-        var dt = now - lastFrame;
-        lastFrame = now;
-
-        addFrame(dt);
-
-        var avg = avgFrame();
-
-        // ===== Calculate final score =====
-        // Base: Screen + GPU + Mouse anomalies
-        var baseScore = screenScore + gpuScore + mouseScore;
-
-        // Frame score proportional to avg frame time
-        // 16ms = 60fps → 0, 100ms → ~40 points, capped at 40
-        var frameScore = Math.min(Math.max((avg - 16)/2,0),40);
-
-        var finalScore = Math.min(baseScore + frameScore,100);
-
-        // Determine status
-        var status = "Low suspicion";
-        if(finalScore >= 40 && finalScore < 70) status = "Medium suspicion";
-        if(finalScore >= 70) status = "HIGH suspicion";
-
-        // Update panel
-        panel.innerHTML =
-            "<b>Remote Session Score</b><br>" +
-            "Score: <b>" + finalScore.toFixed(0) + "%</b><br>" +
-            "Status: <b>" + status + "</b><br><br>" +
-            "Avg last 10 frames: <b>" + avg.toFixed(2) + " ms</b><br>" +
-            "Screen: " + sw + "×" + sh + "<br>" +
-            "DPR: " + dpr;
-
-        requestAnimationFrame(tick);
-    }
-
-    requestAnimationFrame(tick);
-
-})();
-</script>
-<script type="text/javascript">
-    aclib.runAutoTag({
-        zoneId: 'pmb8uvkza4',
-    });
-</script>
-
+    <div class="content">
+        <h2>About This Page</h2>
+        <p>This is a simple, self-contained HTML file with inline CSS for styling. It demonstrates basic HTML structure and common elements.</p>
+        
+        <div class="highlight">
+            <p><strong>Note:</strong> This is a single HTML file with everything included - no external CSS or JavaScript files needed.</p>
+        </div>
+        
+        <h2>HTML Features Shown</h2>
+        <ul>
+            <li>Proper HTML5 document structure with <code>&lt;!DOCTYPE html&gt;</code></li>
+            <li>Semantic elements like <code>&lt;header&gt;</code>, <code>&lt;footer&gt;</code>, and <code>&lt;section&gt;</code></li>
+            <li>Basic text formatting with headings and paragraphs</li>
+            <li>Lists (both ordered and unordered)</li>
+            <li>Links to external websites</li>
+            <li>Inline CSS styling</li>
+            <li>Responsive design with media queries</li>
+        </ul>
+        
+        <h2>Getting Started with HTML</h2>
+        <p>HTML (HyperText Markup Language) is the standard language for creating web pages. Here's a simple process:</p>
+        <ol>
+            <li>Create a new file with a <code>.html</code> extension</li>
+            <li>Add the basic HTML structure (like this file)</li>
+            <li>Add your content between the <code>&lt;body&gt;</code> tags</li>
+            <li>Style your page with CSS</li>
+            <li>Open the file in a web browser to view it</li>
+        </ol>
+        
+        <h2>Useful Resources</h2>
+        <p>Learn more about web development from these resources:</p>
+        <ul>
+            <li><a href="https://developer.mozilla.org/en-US/docs/Web/HTML" target="_blank">MDN Web Docs - HTML</a></li>
+            <li><a href="https://www.w3schools.com/html/" target="_blank">W3Schools HTML Tutorial</a></li>
+            <li><a href="https://html.com/" target="_blank">HTML.com Beginner's Guide</a></li>
+        </ul>
+    </div>
+    
+    <footer>
+        <p>Created with basic HTML & CSS | Simple Webpage Example</p>
+        <p>Open this file in any web browser to view it</p>
+    </footer>
 </body>
 </html>
